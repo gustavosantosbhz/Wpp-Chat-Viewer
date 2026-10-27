@@ -305,6 +305,13 @@ body {
   color: var(--accent);
 }
 
+.upload-error {
+  margin-top: 16px;
+  color: #e96c6c;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .upload-privacy {
   position: absolute;
   bottom: 1.5rem;
@@ -529,9 +536,22 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
-  padding: 8px 16px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.chat-row {
+  padding: 0 16px;
+}
+
+.chat-empty {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
 }
 
 .chat-list::-webkit-scrollbar {
@@ -1536,8 +1556,8 @@ body {
    ============================================================ */
 
 @media (max-width: 768px) {
-  .chat-list {
-    padding: 8px 10px;
+  .chat-row {
+    padding: 0 10px;
   }
 
   .msg-bubble {

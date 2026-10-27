@@ -12,6 +12,8 @@ interface DropZoneProps {
   };
 }
 
+const isSupported = (f: File) => /\.(txt|zip)$/i.test(f.name);
+
 export function DropZone({ onFilesSelected, isLoading, progress }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -20,9 +22,7 @@ export function DropZone({ onFilesSelected, isLoading, progress }: DropZoneProps
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
-      const files = Array.from(e.dataTransfer.files).filter(
-        f => f.name.endsWith('.txt') || f.name.endsWith('.zip')
-      );
+      const files = Array.from(e.dataTransfer.files).filter(isSupported);
       if (files.length > 0) onFilesSelected(files);
     },
     [onFilesSelected]
@@ -42,9 +42,7 @@ export function DropZone({ onFilesSelected, isLoading, progress }: DropZoneProps
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter(
-      f => f.name.endsWith('.txt') || f.name.endsWith('.zip')
-    );
+    const files = Array.from(e.target.files || []).filter(isSupported);
     if (files.length > 0) onFilesSelected(files);
   };
 
@@ -107,6 +105,10 @@ export function DropZone({ onFilesSelected, isLoading, progress }: DropZoneProps
             </span>
           </div>
         </div>
+      )}
+
+      {!isLoading && progress.phase === 'done' && progress.message && (
+        <p className="upload-error" role="alert">{progress.message}</p>
       )}
 
       <p className="upload-privacy">

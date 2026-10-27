@@ -8,8 +8,7 @@ import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import { useChat } from './hooks/useChat';
 import { useTheme } from './hooks/useTheme';
 import { useSearch } from './hooks/useSearch';
-import { downloadMarkdown } from './utils/mdExport';
-import { exportToPdf, type PdfExportProgress } from './utils/pdfExport';
+import type { PdfExportProgress } from './utils/pdfExport';
 import {
   RefreshCw, Search, ChevronUp, ChevronDown, X,
   FileDown, FileText, Moon, Sun,
@@ -55,17 +54,23 @@ function App() {
     if (!chatData) return;
     setIsPdfExporting(true);
     try {
+      // jsPDF e html2canvas só são baixados quando o usuário exporta
+      const { exportToPdf } = await import('./utils/pdfExport');
       const exportData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.length };
       await exportToPdf(exportData, progress => {
         setPdfProgress(progress);
       });
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      alert('Não foi possível gerar o PDF. Tente exportar um período menor.');
     } finally {
       setIsPdfExporting(false);
     }
   };
 
-  const handleExportMarkdown = () => {
+  const handleExportMarkdown = async () => {
     if (!chatData) return;
+    const { downloadMarkdown } = await import('./utils/mdExport');
     const exportData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.length };
     downloadMarkdown(exportData);
   };
@@ -87,7 +92,7 @@ function App() {
     return (
       <div className={`app ${theme}`}>
         <DropZone
-          onFilesSelected={processFiles}
+          onFilesSelected={files => void processFiles(files)}
           isLoading={isLoading}
           progress={progress}
         />
@@ -140,16 +145,16 @@ function App() {
 
 
           <span className="viewer-actions-sep" />
-          <button className="viewer-action-btn" onClick={handleExportPdf} disabled={isPdfExporting} title="Exportar PDF">
+          <button className="viewer-action-btn" onClick={() => void handleExportPdf()} disabled={isPdfExporting} title="Exportar PDF">
             <FileDown size={16} />
             PDF
           </button>
-          <button className="viewer-action-btn" onClick={handleExportMarkdown} title="Exportar Markdown">
+          <button className="viewer-action-btn" onClick={() => void handleExportMarkdown()} title="Exportar Markdown">
             <FileText size={16} />
             Markdown
           </button>
           <span className="viewer-actions-sep" />
-          <button className="viewer-action-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}>
+          <button className="viewer-action-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'} aria-label={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
@@ -164,6 +169,7 @@ function App() {
                 value={filters.searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Pesquisar na conversa..."
+                aria-label="Pesquisar na conversa"
                 className="viewer-search-input"
                 autoFocus
               />
@@ -176,13 +182,13 @@ function App() {
               )}
             </div>
             <div className="viewer-search-nav">
-              <button className="viewer-search-nav-btn" onClick={goToPrevResult} disabled={searchResults.length === 0}>
+              <button className="viewer-search-nav-btn" onClick={goToPrevResult} disabled={searchResults.length === 0} aria-label="Resultado anterior">
                 <ChevronUp size={18} />
               </button>
-              <button className="viewer-search-nav-btn" onClick={goToNextResult} disabled={searchResults.length === 0}>
+              <button className="viewer-search-nav-btn" onClick={goToNextResult} disabled={searchResults.length === 0} aria-label="Próximo resultado">
                 <ChevronDown size={18} />
               </button>
-              <button className="viewer-search-nav-btn" onClick={handleToggleSearch}>
+              <button className="viewer-search-nav-btn" onClick={handleToggleSearch} aria-label="Fechar busca">
                 <X size={18} />
               </button>
             </div>
@@ -212,7 +218,7 @@ function App() {
             <div className="phone-screen">
               {/* Header WhatsApp simples (dentro do phone) */}
               <div className="phone-wpp-header">
-                <button className="phone-wpp-header-back">
+                <button className="phone-wpp-header-back" aria-label="Voltar">
                   <ArrowLeft size={20} />
                 </button>
                 <div className="phone-wpp-avatar">
@@ -252,7 +258,7 @@ function App() {
             <div className="phone-bottom-bar">
               <div className="phone-bottom-bar-input">
                 <span className="phone-bottom-emoji">😊</span>
-                <span className="phone-bottom-text">Message</span>
+                <span className="phone-bottom-text">Mensagem</span>
               </div>
               <div className="phone-bottom-actions">
                 <span className="phone-bottom-icon">📎</span>

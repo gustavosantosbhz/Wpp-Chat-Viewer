@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { MessageBubble, DateSeparator, getSenderColorMap } from './MessageBubble';
+import { List, useDynamicRowHeight, useListRef, type RowComponentProps } from 'react-window';
+import { MessageBubble, DateSeparator } from './MessageBubble';
+import { getSenderColorMap } from '../../utils/senderColors';
 import type { ParsedMessage, MediaFile } from '../../types';
 
 interface ChatViewProps {
@@ -14,7 +16,46 @@ interface ChatViewProps {
 
 type ListItem =
   | { type: 'date'; date: string; key: string }
-  | { type: 'message'; message: ParsedMessage; index: number; key: string };
+  | { type: 'message'; message: ParsedMessage; key: string };
+
+interface RowProps {
+  items: ListItem[];
+  firstSender: string;
+  senderColorMap: Map<string, string>;
+  mediaFiles: Map<string, MediaFile>;
+  searchTerm: string;
+  highlightedMessageId: number | undefined;
+}
+
+function ChatRow({
+  index,
+  style,
+  items,
+  firstSender,
+  senderColorMap,
+  mediaFiles,
+  searchTerm,
+  highlightedMessageId,
+}: RowComponentProps<RowProps>) {
+  const item = items[index];
+
+  return (
+    <div style={style} className="chat-row">
+      {item.type === 'date' ? (
+        <DateSeparator date={item.date} />
+      ) : (
+        <MessageBubble
+          message={item.message}
+          isFirstSender={item.message.sender === firstSender}
+          senderColorMap={senderColorMap}
+          mediaFiles={mediaFiles}
+          searchTerm={searchTerm}
+          isSearchResult={item.message.id === highlightedMessageId}
+        />
+      )}
+    </div>
+  );
+}
 
 export function ChatView({
   messages,
@@ -25,57 +66,65 @@ export function ChatView({
   searchResults,
   currentResultIndex,
 }: ChatViewProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const listRef = useListRef(null);
   const senderColorMap = useMemo(() => getSenderColorMap(participants), [participants]);
 
-  // Cria items com separadores de data
-  const items: ListItem[] = useMemo(() => {
-    const result: ListItem[] = [];
+  // Linhas da lista (separadores de data + mensagens) e índice mensagem → linha
+  const { items, messageRows } = useMemo(() => {
+    const rows: ListItem[] = [];
+    const messageRows: number[] = [];
     let currentDate = '';
 
-    messages.forEach((msg, index) => {
+    for (const msg of messages) {
       if (msg.date !== currentDate) {
         currentDate = msg.date;
-        result.push({ type: 'date', date: msg.date, key: `date-${msg.date}-${index}` });
+        rows.push({ type: 'date', date: msg.date, key: `date-${msg.date}-${msg.id}` });
       }
-      result.push({ type: 'message', message: msg, index, key: `msg-${msg.id}` });
-    });
+      messageRows.push(rows.length);
+      rows.push({ type: 'message', message: msg, key: `msg-${msg.id}` });
+    }
 
-    return result;
+    return { items: rows, messageRows };
   }, [messages]);
 
-  const currentHighlightIndex = searchResults[currentResultIndex];
+  // Alturas variam (texto, mídia): medidas na renderização e descartadas ao trocar a lista
+  const rowHeight = useDynamicRowHeight({
+    defaultRowHeight: 64,
+    key: `${items.length}:${messages[0]?.id}:${messages.at(-1)?.id}`,
+  });
 
-  // Scroll para o final ao carregar pela primeira vez
+  const highlightedMessageIndex = searchResults[currentResultIndex];
+  const highlightedMessageId =
+    highlightedMessageIndex === undefined ? undefined : messages[highlightedMessageIndex]?.id;
+
+  // Rola para o fim ao carregar pela primeira vez
   const hasScrolledRef = useRef(false);
   useEffect(() => {
-    if (scrollRef.current && items.length > 0 && !hasScrolledRef.current) {
-      hasScrolledRef.current = true;
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-      }, 100);
-    }
-  }, [items.length]);
+    if (items.length === 0 || hasScrolledRef.current) return;
+    hasScrolledRef.current = true;
+    const scrollToEnd = () =>
+      listRef.current?.scrollToRow({ index: items.length - 1, align: 'end', behavior: 'instant' });
+    scrollToEnd();
+    // Alturas reais só são conhecidas após a primeira medição
+    const timer = setTimeout(scrollToEnd, 150);
+    return () => clearTimeout(timer);
+  }, [items.length, listRef]);
 
-  // Scroll para resultado da busca atual
+  // Rola até o resultado atual da busca
   useEffect(() => {
-    if (currentHighlightIndex !== undefined && scrollRef.current) {
-      const target = scrollRef.current.querySelector(
-        `[data-msg-id="${currentHighlightIndex}"]`
-      );
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [currentHighlightIndex]);
+    if (highlightedMessageIndex === undefined) return;
+    listRef.current?.scrollToRow({
+      index: messageRows[highlightedMessageIndex],
+      align: 'center',
+      behavior: 'instant',
+    });
+  }, [highlightedMessageIndex, messageRows, listRef]);
 
   if (items.length === 0) {
     return (
       <div className="chat-view-container">
         <div className="chat-wallpaper" />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-          Nenhuma mensagem encontrada.
-        </div>
+        <div className="chat-empty">Nenhuma mensagem encontrada.</div>
       </div>
     );
   }
@@ -83,28 +132,15 @@ export function ChatView({
   return (
     <div className="chat-view-container">
       <div className="chat-wallpaper" />
-      <div className="chat-list" ref={scrollRef}>
-        {items.map(item => {
-          if (item.type === 'date') {
-            return <DateSeparator key={item.key} date={item.date} />;
-          }
-
-          const isFirst = item.message.sender === firstSender;
-          const isCurrentResult = item.index === currentHighlightIndex;
-
-          return (
-            <MessageBubble
-              key={item.key}
-              message={item.message}
-              isFirstSender={isFirst}
-              senderColorMap={senderColorMap}
-              mediaFiles={mediaFiles}
-              searchTerm={searchTerm}
-              isSearchResult={isCurrentResult}
-            />
-          );
-        })}
-      </div>
+      <List
+        className="chat-list"
+        listRef={listRef}
+        rowComponent={ChatRow}
+        rowCount={items.length}
+        rowHeight={rowHeight}
+        rowProps={{ items, firstSender, senderColorMap, mediaFiles, searchTerm, highlightedMessageId }}
+        overscanCount={8}
+      />
     </div>
   );
 }

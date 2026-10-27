@@ -1,7 +1,8 @@
 export interface ParsedMessage {
   id: number;
   date: string;       // DD/MM/YYYY
-  time: string;       // HH:MM
+  time: string;       // HH:MM (24h)
+  timestamp: number;  // epoch ms (fuso local), usado para ordenar e filtrar
   sender: string;
   text: string;
   mediaFilename?: string;
@@ -11,9 +12,9 @@ export interface ParsedMessage {
 
 export interface MediaFile {
   name: string;
-  blob: Blob;
-  url: string;
   type: 'image' | 'video' | 'audio' | 'file';
+  /** Extrai o conteúdo sob demanda (evita descompactar o ZIP inteiro na memória). */
+  load: () => Promise<Blob>;
 }
 
 export interface ChatData {

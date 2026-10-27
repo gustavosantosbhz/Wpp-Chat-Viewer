@@ -71,7 +71,7 @@ export function generateMarkdown(chatData: ChatData): string {
 
 export function downloadMarkdown(chatData: ChatData): void {
   const md = generateMarkdown(chatData);
-  const names = chatData.participants.join('_').replace(/\s+/g, '');
+  const names = chatData.participants.join('_').replace(/[^\p{L}\p{N}_-]+/gu, '');
   const filename = `conversa_${names}.md`;
 
   const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });

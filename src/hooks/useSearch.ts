@@ -1,5 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { ParsedMessage, FilterState, ContentType } from '../types';
+import { parseDateToTimestamp } from '../utils/parser';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const initialFilter: FilterState = {
   searchTerm: '',
@@ -11,7 +14,7 @@ const initialFilter: FilterState = {
 
 export function useSearch(messages: ParsedMessage[]) {
   const [filters, setFilters] = useState<FilterState>(initialFilter);
-  const [currentResultIndex, setCurrentResultIndex] = useState(0);
+  const [rawResultIndex, setCurrentResultIndex] = useState(0);
 
   const filteredMessages = useMemo(() => {
     let result = messages;
@@ -21,25 +24,15 @@ export function useSearch(messages: ParsedMessage[]) {
       result = result.filter(m => filters.senders.includes(m.sender));
     }
 
-    // Filtro por período
+    // Filtro por período (início do dia inicial até o fim do dia final)
     if (filters.dateStart) {
-      result = result.filter(m => {
-        const [d, mo, y] = m.date.split('/').map(Number);
-        const [sd, smo, sy] = filters.dateStart.split('/').map(Number);
-        const msgDate = new Date(y, mo - 1, d);
-        const startDate = new Date(sy, smo - 1, sd);
-        return msgDate >= startDate;
-      });
+      const start = parseDateToTimestamp(filters.dateStart);
+      result = result.filter(m => m.timestamp >= start);
     }
 
     if (filters.dateEnd) {
-      result = result.filter(m => {
-        const [d, mo, y] = m.date.split('/').map(Number);
-        const [ed, emo, ey] = filters.dateEnd.split('/').map(Number);
-        const msgDate = new Date(y, mo - 1, d);
-        const endDate = new Date(ey, emo - 1, ed);
-        return msgDate <= endDate;
-      });
+      const end = parseDateToTimestamp(filters.dateEnd) + DAY_MS;
+      result = result.filter(m => m.timestamp < end);
     }
 
     // Filtro por tipo de conteúdo
@@ -63,6 +56,9 @@ export function useSearch(messages: ParsedMessage[]) {
       .filter(({ msg }) => msg.text.toLowerCase().includes(term))
       .map(({ index }) => index);
   }, [filteredMessages, filters.searchTerm]);
+
+  // Os filtros podem reduzir os resultados: mantém o índice dentro do intervalo
+  const currentResultIndex = Math.min(rawResultIndex, Math.max(searchResults.length - 1, 0));
 
   const setSearchTerm = useCallback((term: string) => {
     setFilters(prev => ({ ...prev, searchTerm: term }));
