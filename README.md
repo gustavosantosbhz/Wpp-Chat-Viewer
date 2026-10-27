@@ -44,6 +44,10 @@ The app is deployed to GitHub Pages by `.github/workflows/deploy.yml` on every p
 
 React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · vite-plugin-pwa · Vitest
 
+## Contributing and support
+
+Personal project, provided as is. **No issues, pull requests, questions or suggestions are accepted** — see [CONTRIBUTING.md](CONTRIBUTING.md). Forking and cloning are welcome, under the license below.
+
 ## License
 
 Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): free for personal, educational and other noncommercial use. Commercial use requires written permission from the author.

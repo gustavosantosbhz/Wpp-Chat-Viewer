@@ -44,6 +44,10 @@ O deploy no GitHub Pages é feito por `.github/workflows/deploy.yml` a cada push
 
 React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · vite-plugin-pwa · Vitest
 
+## Contribuições e suporte
+
+Projeto pessoal, fornecido como está. **Não são aceitos issues, pull requests, perguntas nem sugestões** — veja [CONTRIBUTING.md](CONTRIBUTING.md). Forks e cópias são bem-vindos, conforme a licença abaixo.
+
 ## Licença
 
 Licenciado sob a [PolyForm Noncommercial License 1.0.0](LICENSE): uso livre para fins pessoais, educacionais e outros não comerciais. Uso comercial exige autorização escrita do autor.
