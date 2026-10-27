@@ -1,73 +1,38 @@
-# React + TypeScript + Vite
+# WhatsApp Chat Viewer
 
-Este template fornece uma configuração mínima para fazer o React funcionar no Vite com HMR e algumas regras do ESLint.
+Português · [English](README.md)
 
-Atualmente, dois plugins oficiais estão disponíveis:
+Visualize, pesquise e exporte suas conversas do WhatsApp direto no navegador. Tudo roda **localmente** — nenhum arquivo é enviado a servidores.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) usa o [Babel](https://babeljs.io/) (ou o [oxc](https://oxc.rs) quando usado no [rolldown-vite](https://vite.dev/guide/rolldown)) para o Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) usa o [SWC](https://swc.rs/) para o Fast Refresh
+## Recursos
 
-## React Compiler
+- Carrega exportações `.txt` ou `.zip` (com mídia); vários arquivos do mesmo chat são unidos sem duplicar mensagens
+- Exportações Android e iOS, datas `DD/MM` e `MM/DD`, horários em 24h e AM/PM
+- Visual de celular que continua fluido com dezenas de milhares de mensagens (lista virtualizada e parsing em Web Worker)
+- Formatação do WhatsApp (`*negrito*`, `_itálico_`, `~tachado~`, `` `código` ``), links, imagens, vídeos, áudios e arquivos
+- Busca com destaque, filtros por remetente, período e tipo de conteúdo, e estatísticas da conversa
+- Exportação em PDF e Markdown (respeita os filtros ativos)
+- Temas escuro e claro
 
-O React Compiler não está habilitado neste template por causa do impacto no desempenho de desenvolvimento e de build. Para adicioná-lo, consulte [esta documentação](https://react.dev/learn/react-compiler/installation).
+## Como exportar uma conversa no WhatsApp
 
-## Expandindo a configuração do ESLint
+Abra a conversa → ⋮ / nome do contato → **Exportar conversa** → escolha *Sem mídia* (`.txt`) ou *Incluir mídia* (`.zip`).
 
-Se você está desenvolvendo uma aplicação para produção, recomendamos atualizar a configuração para habilitar regras de lint com verificação de tipos:
+## Desenvolvimento
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Outras configurações...
+Requer Node.js 20+.
 
-      // Remova tseslint.configs.recommended e substitua por este
-      tseslint.configs.recommendedTypeChecked,
-      // Como alternativa, use este para regras mais estritas
-      tseslint.configs.strictTypeChecked,
-      // Opcionalmente, adicione este para regras de estilo
-      tseslint.configs.stylisticTypeChecked,
-
-      // Outras configurações...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // outras opções...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # servidor de desenvolvimento
+npm run lint     # ESLint
+npm test         # testes unitários (Vitest)
+npm run build    # checagem de tipos + build de produção
+npm run preview  # serve o build de produção
 ```
 
-Você também pode instalar o [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) e o [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) para regras de lint específicas do React:
+O deploy no GitHub Pages é feito por `.github/workflows/deploy.yml` a cada push em `main`, após lint e testes passarem. Pull requests rodam lint, testes e build via `.github/workflows/ci.yml`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Outras configurações...
-      // Habilita regras de lint para React
-      reactX.configs['recommended-typescript'],
-      // Habilita regras de lint para React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // outras opções...
-    },
-  },
-])
-```
+React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · Vitest
