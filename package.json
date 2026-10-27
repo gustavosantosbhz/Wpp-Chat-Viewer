@@ -2,6 +2,8 @@
   "name": "wpp-chat-viewer",
   "private": true,
   "version": "0.0.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Gustavo Santos",
   "type": "module",
   "scripts": {
     "dev": "vite",

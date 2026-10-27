@@ -36,3 +36,9 @@ The app is deployed to GitHub Pages by `.github/workflows/deploy.yml` on every p
 ## Stack
 
 React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · Vitest
+
+## License
+
+Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): free for personal, educational and other noncommercial use. Commercial use requires written permission from the author.
+
+Required Notice: Copyright (c) 2026 Gustavo Santos
