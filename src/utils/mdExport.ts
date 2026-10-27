@@ -1,4 +1,5 @@
 import type { ChatData } from '../types';
+import { downloadBlob, exportBaseName } from './download';
 
 // Paleta de emojis indicadores por participante para diferenciação visual
 const PARTICIPANT_INDICATORS = ['🟢', '🔵', '🟠', '🟣', '🔴', '🟡', '⚪', '🟤'];
@@ -70,15 +71,5 @@ export function generateMarkdown(chatData: ChatData): string {
 }
 
 export function downloadMarkdown(chatData: ChatData): void {
-  const md = generateMarkdown(chatData);
-  const names = chatData.participants.join('_').replace(/[^\p{L}\p{N}_-]+/gu, '');
-  const filename = `conversa_${names}.md`;
-
-  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(generateMarkdown(chatData), `${exportBaseName(chatData)}.md`, 'text/markdown;charset=utf-8');
 }

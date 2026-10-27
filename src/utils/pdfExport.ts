@@ -1,6 +1,7 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { ChatData } from '../types';
+import { exportBaseName } from './download';
 import { getMediaCaption } from './parser';
 import { getSenderColorMap, SENDER_COLORS } from './senderColors';
 
@@ -14,8 +15,7 @@ export async function exportToPdf(
   onProgress?: (progress: PdfExportProgress) => void
 ): Promise<void> {
   const { participants, dateStart, dateEnd, messages } = chatData;
-  const names = participants.join('_').replace(/[^\p{L}\p{N}_-]+/gu, '');
-  const filename = `conversa_${names}_${dateStart.replace(/\//g, '-')}-${dateEnd.replace(/\//g, '-')}.pdf`;
+  const filename = `${exportBaseName(chatData)}_${dateStart.replace(/\//g, '-')}-${dateEnd.replace(/\//g, '-')}.pdf`;
   const senderColors = getSenderColorMap(participants);
 
   // Cria container temporário para renderizar as mensagens

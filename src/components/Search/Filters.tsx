@@ -7,9 +7,13 @@ interface FiltersProps {
   dateStart: string;
   dateEnd: string;
   contentTypes: ContentType[];
+  weekdays: number[];
+  hours: number[];
   onSendersChange: (senders: string[]) => void;
   onDateRangeChange: (start: string, end: string) => void;
   onContentTypesChange: (types: ContentType[]) => void;
+  onWeekdaysChange: (weekdays: number[]) => void;
+  onHoursChange: (hours: number[]) => void;
   onClear: () => void;
 }
 
@@ -21,15 +25,25 @@ const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   file: '📎 Arquivo',
 };
 
+const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
+const toggle = <T,>(list: T[], value: T) =>
+  list.includes(value) ? list.filter(item => item !== value) : [...list, value];
+
 export function Filters({
   participants,
   selectedSenders,
   dateStart,
   dateEnd,
   contentTypes,
+  weekdays,
+  hours,
   onSendersChange,
   onDateRangeChange,
   onContentTypesChange,
+  onWeekdaysChange,
+  onHoursChange,
   onClear,
 }: FiltersProps) {
   const toggleSender = (sender: string) => {
@@ -61,7 +75,7 @@ export function Filters({
   };
 
   const hasActiveFilters =
-    selectedSenders.length > 0 || dateStart || dateEnd || contentTypes.length > 0;
+    selectedSenders.length > 0 || dateStart || dateEnd || contentTypes.length > 0 || weekdays.length > 0 || hours.length > 0;
 
   return (
     <div className="filters-sidebar">
@@ -127,6 +141,41 @@ export function Filters({
               </button>
             )
           )}
+        </div>
+      </div>
+
+      {/* Dia da semana */}
+      <div className="filters-section">
+        <h4 className="filters-section-title">Dia da semana</h4>
+        <div className="filters-chips">
+          {WEEKDAY_LABELS.map((label, day) => (
+            <button
+              key={day}
+              className={`filters-chip ${weekdays.includes(day) ? 'filters-chip--active' : ''}`}
+              aria-pressed={weekdays.includes(day)}
+              onClick={() => onWeekdaysChange(toggle(weekdays, day))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Horário */}
+      <div className="filters-section">
+        <h4 className="filters-section-title">Horário</h4>
+        <div className="filters-hours">
+          {HOURS.map(hour => (
+            <button
+              key={hour}
+              className={`filters-chip filters-chip--compact ${hours.includes(hour) ? 'filters-chip--active' : ''}`}
+              aria-pressed={hours.includes(hour)}
+              aria-label={`${hour} horas`}
+              onClick={() => onHoursChange(toggle(hours, hour))}
+            >
+              {hour}
+            </button>
+          ))}
         </div>
       </div>
     </div>

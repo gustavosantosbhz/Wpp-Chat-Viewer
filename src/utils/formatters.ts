@@ -1,7 +1,7 @@
+import { findFoldedRanges } from './text';
+
 const escapeHtml = (text: string) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Pontuação final que não faz parte da URL
 const TRAILING_PUNCTUATION = /[.,;:!?)\]]+$/;
@@ -40,11 +40,20 @@ export function formatWhatsAppText(text: string, searchTerm?: string): string {
   return searchTerm?.trim() ? highlightText(html, searchTerm) : html;
 }
 
-/** Destaca o termo apenas no texto visível, preservando tags e entidades. */
+/** Destaca o termo (sem diferenciar acentos) apenas no texto visível, preservando tags e entidades. */
 function highlightText(html: string, searchTerm: string): string {
-  const regex = new RegExp(`(${escapeRegExp(escapeHtml(searchTerm))})`, 'gi');
   return html
     .split(/(<[^>]*>|&(?:amp|lt|gt);)/)
-    .map((part, i) => (i % 2 === 1 ? part : part.replace(regex, '<mark class="search-highlight">$1</mark>')))
+    .map((part, i) => (i % 2 === 1 ? part : markRanges(part, findFoldedRanges(part, searchTerm))))
     .join('');
+}
+
+function markRanges(text: string, ranges: [number, number][]): string {
+  let result = '';
+  let cursor = 0;
+  for (const [start, end] of ranges) {
+    result += `${text.slice(cursor, start)}<mark class="search-highlight">${text.slice(start, end)}</mark>`;
+    cursor = end;
+  }
+  return result + text.slice(cursor);
 }

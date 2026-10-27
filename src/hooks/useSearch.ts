@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { ParsedMessage, FilterState, ContentType } from '../types';
 import { parseDateToTimestamp } from '../utils/parser';
+import { foldCached, foldText } from '../utils/text';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -10,6 +11,8 @@ const initialFilter: FilterState = {
   dateStart: '',
   dateEnd: '',
   contentTypes: [],
+  hours: [],
+  weekdays: [],
 };
 
 export function useSearch(messages: ParsedMessage[]) {
@@ -35,6 +38,15 @@ export function useSearch(messages: ParsedMessage[]) {
       result = result.filter(m => m.timestamp < end);
     }
 
+    // Filtro por horário e dia da semana
+    if (filters.hours.length > 0) {
+      result = result.filter(m => filters.hours.includes(new Date(m.timestamp).getHours()));
+    }
+
+    if (filters.weekdays.length > 0) {
+      result = result.filter(m => filters.weekdays.includes(new Date(m.timestamp).getDay()));
+    }
+
     // Filtro por tipo de conteúdo
     if (filters.contentTypes.length > 0) {
       result = result.filter(m => {
@@ -45,16 +57,17 @@ export function useSearch(messages: ParsedMessage[]) {
     }
 
     return result;
-  }, [messages, filters.senders, filters.dateStart, filters.dateEnd, filters.contentTypes]);
+  }, [messages, filters.senders, filters.dateStart, filters.dateEnd, filters.contentTypes, filters.hours, filters.weekdays]);
 
-  // Resultados da busca (índices das mensagens que contêm o termo)
+  // Resultados da busca (índices das mensagens que contêm o termo, sem diferenciar acentos)
   const searchResults = useMemo(() => {
-    if (!filters.searchTerm.trim()) return [];
-    const term = filters.searchTerm.toLowerCase();
-    return filteredMessages
-      .map((msg, index) => ({ msg, index }))
-      .filter(({ msg }) => msg.text.toLowerCase().includes(term))
-      .map(({ index }) => index);
+    const term = foldText(filters.searchTerm.trim());
+    if (!term) return [];
+    const indices: number[] = [];
+    filteredMessages.forEach((msg, index) => {
+      if (foldCached(msg, msg.text).includes(term)) indices.push(index);
+    });
+    return indices;
   }, [filteredMessages, filters.searchTerm]);
 
   // Os filtros podem reduzir os resultados: mantém o índice dentro do intervalo
@@ -75,6 +88,14 @@ export function useSearch(messages: ParsedMessage[]) {
 
   const setContentTypes = useCallback((contentTypes: ContentType[]) => {
     setFilters(prev => ({ ...prev, contentTypes }));
+  }, []);
+
+  const setHours = useCallback((hours: number[]) => {
+    setFilters(prev => ({ ...prev, hours }));
+  }, []);
+
+  const setWeekdays = useCallback((weekdays: number[]) => {
+    setFilters(prev => ({ ...prev, weekdays }));
   }, []);
 
   const clearFilters = useCallback(() => {
@@ -101,6 +122,8 @@ export function useSearch(messages: ParsedMessage[]) {
     setSenders,
     setDateRange,
     setContentTypes,
+    setHours,
+    setWeekdays,
     clearFilters,
     goToNextResult,
     goToPrevResult,

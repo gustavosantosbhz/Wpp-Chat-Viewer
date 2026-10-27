@@ -4,14 +4,17 @@ import { ChatView } from './components/Chat/ChatView';
 import { StatsPanel } from './components/Stats/StatsPanel';
 import { Filters } from './components/Search/Filters';
 import { PdfProgressModal } from './components/UI/PdfProgressModal';
+import { ExportMenu, type ExportFormat } from './components/UI/ExportMenu';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
+import { monthRange } from './utils/stats';
 import { useChat } from './hooks/useChat';
 import { useTheme } from './hooks/useTheme';
 import { useSearch } from './hooks/useSearch';
 import type { PdfExportProgress } from './utils/pdfExport';
+import type { ChatData } from './types';
 import {
   RefreshCw, Search, ChevronUp, ChevronDown, X,
-  FileDown, FileText, Moon, Sun,
+  Moon, Sun,
   ArrowLeft, Video, Phone, MoreVertical,
 } from 'lucide-react';
 
@@ -29,6 +32,8 @@ function App() {
     setSenders,
     setDateRange,
     setContentTypes,
+    setHours,
+    setWeekdays,
     clearFilters,
     goToNextResult,
     goToPrevResult,
@@ -45,19 +50,18 @@ function App() {
 
   // Determina se há filtros ativos
   const hasActiveFilters =
-    filters.senders.length > 0 || filters.dateStart || filters.dateEnd || filters.contentTypes.length > 0 || filters.searchTerm;
+    filters.senders.length > 0 || filters.dateStart || filters.dateEnd || filters.contentTypes.length > 0 ||
+    filters.hours.length > 0 || filters.weekdays.length > 0 || filters.searchTerm;
 
   // Mensagens para exportação: filtradas se filtro ativo, todas se não
   const exportMessages = hasActiveFilters ? filteredMessages : chatData?.messages || [];
 
-  const handleExportPdf = async () => {
-    if (!chatData) return;
+  const handleExportPdf = async (data: ChatData) => {
     setIsPdfExporting(true);
     try {
       // jsPDF e html2canvas só são baixados quando o usuário exporta
       const { exportToPdf } = await import('./utils/pdfExport');
-      const exportData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.length };
-      await exportToPdf(exportData, progress => {
+      await exportToPdf(data, progress => {
         setPdfProgress(progress);
       });
     } catch (error) {
@@ -68,11 +72,37 @@ function App() {
     }
   };
 
-  const handleExportMarkdown = async () => {
+  const handleExport = async (format: ExportFormat) => {
     if (!chatData) return;
-    const { downloadMarkdown } = await import('./utils/mdExport');
-    const exportData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.length };
-    downloadMarkdown(exportData);
+    const data: ChatData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.filter(m => !m.isSystemMessage).length };
+
+    if (format === 'pdf-image') return handleExportPdf(data);
+
+    // Cada formato é carregado só quando usado
+    if (format === 'markdown') {
+      (await import('./utils/mdExport')).downloadMarkdown(data);
+      return;
+    }
+    const exporters = await import('./utils/exporters');
+    if (format === 'pdf-text') exporters.printChat(data);
+    else if (format === 'html') exporters.downloadHtml(data);
+    else if (format === 'json') exporters.downloadJson(data);
+    else exporters.downloadCsv(data);
+  };
+
+  const toggleItem = <T,>(list: T[], value: T) =>
+    list.includes(value) ? list.filter(item => item !== value) : [...list, value];
+
+  // Clicar no mês de novo limpa o período
+  const handleSelectMonth = (month: string) => {
+    const [start, end] = monthRange(month);
+    if (filters.dateStart === start && filters.dateEnd === end) setDateRange('', '');
+    else setDateRange(start, end);
+  };
+
+  const handleSearchWord = (word: string) => {
+    setIsSearchOpen(true);
+    setSearchTerm(word);
   };
 
   const handleToggleSearch = () => {
@@ -145,14 +175,7 @@ function App() {
 
 
           <span className="viewer-actions-sep" />
-          <button className="viewer-action-btn" onClick={() => void handleExportPdf()} disabled={isPdfExporting} title="Exportar PDF">
-            <FileDown size={16} />
-            PDF
-          </button>
-          <button className="viewer-action-btn" onClick={() => void handleExportMarkdown()} title="Exportar Markdown">
-            <FileText size={16} />
-            Markdown
-          </button>
+          <ExportMenu disabled={isPdfExporting} onExport={format => void handleExport(format)} />
           <span className="viewer-actions-sep" />
           <button className="viewer-action-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'} aria-label={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
@@ -209,6 +232,10 @@ function App() {
             onSendersChange={setSenders}
             onDateRangeChange={setDateRange}
             onContentTypesChange={setContentTypes}
+            weekdays={filters.weekdays}
+            hours={filters.hours}
+            onWeekdaysChange={setWeekdays}
+            onHoursChange={setHours}
             onClear={clearFilters}
           />
 
@@ -269,7 +296,15 @@ function App() {
           </div>
 
           {/* ===== ESTATÍSTICAS à direita do phone ===== */}
-          <StatsPanel messages={chatData.messages} />
+          <StatsPanel
+            messages={chatData.messages}
+            filters={filters}
+            onToggleSender={name => setSenders(toggleItem(filters.senders, name))}
+            onToggleHour={hour => setHours(toggleItem(filters.hours, hour))}
+            onToggleWeekday={day => setWeekdays(toggleItem(filters.weekdays, day))}
+            onSelectMonth={handleSelectMonth}
+            onSearchWord={handleSearchWord}
+          />
         </div>
       </div>
 
