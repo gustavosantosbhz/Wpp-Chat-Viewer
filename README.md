@@ -10,13 +10,20 @@ View, search and export your WhatsApp conversations in the browser. Everything r
 - Android and iOS exports, `DD/MM` and `MM/DD` dates, 24h and AM/PM clocks
 - Phone-style chat view that stays fast with tens of thousands of messages (virtualized list, parsing in a Web Worker)
 - WhatsApp formatting (`*bold*`, `_italic_`, `~strike~`, `` `code` ``), links, images, videos, audio and files
-- Search with highlight, filters by sender, period and content type, and chat statistics
-- Export to PDF and Markdown (respects the active filters)
+- Search that ignores accents and case, with highlight; filters by sender, period, weekday, hour and content type
+- Statistics with charts (by hour, weekday and month) and most used words — every bar, participant, month and word is a clickable filter
+- Export to PDF (selectable text via print, or image), Markdown, HTML, JSON and CSV (respects the active filters)
+- Optionally remember chats in this browser (IndexedDB) and reopen them later
+- Installable PWA that works offline after the first visit
 - Dark and light themes
 
 ## How to export a chat from WhatsApp
 
 Open the chat → ⋮ / contact name → **Export chat** → choose *Without media* (`.txt`) or *Include media* (`.zip`).
+
+## Privacy
+
+Files never leave your browser. "Remember this chat" is off by default; when enabled, the original files are stored in your browser's IndexedDB and can be deleted at any time from the start screen. CSV cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets don't run them as formulas (the JSON export keeps the original text).
 
 ## Development
 
@@ -35,7 +42,7 @@ The app is deployed to GitHub Pages by `.github/workflows/deploy.yml` on every p
 
 ## Stack
 
-React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · Vitest
+React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · vite-plugin-pwa · Vitest
 
 ## License
 

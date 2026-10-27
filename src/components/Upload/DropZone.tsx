@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, FileArchive, FileText } from 'lucide-react';
+import { Upload, FileArchive, FileText, Trash2 } from 'lucide-react';
+import type { SavedChat } from '../../utils/storage';
 
 interface DropZoneProps {
   onFilesSelected: (files: File[]) => void;
@@ -10,11 +11,32 @@ interface DropZoneProps {
     total: number;
     message: string;
   };
+  savedChats: SavedChat[];
+  remember: boolean;
+  saveError: string;
+  onRememberChange: (value: boolean) => void;
+  onOpenSaved: (chat: SavedChat) => void;
+  onDeleteSaved: (id: string) => void;
+  onClearSaved: () => void;
 }
+
+const formatSize = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
 const isSupported = (f: File) => /\.(txt|zip)$/i.test(f.name);
 
-export function DropZone({ onFilesSelected, isLoading, progress }: DropZoneProps) {
+export function DropZone({
+  onFilesSelected,
+  isLoading,
+  progress,
+  savedChats,
+  remember,
+  saveError,
+  onRememberChange,
+  onOpenSaved,
+  onDeleteSaved,
+  onClearSaved,
+}: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +127,59 @@ export function DropZone({ onFilesSelected, isLoading, progress }: DropZoneProps
             </span>
           </div>
         </div>
+      )}
+
+      {!isLoading && (
+        <label className="upload-remember">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={e => onRememberChange(e.target.checked)}
+          />
+          Lembrar esta conversa neste navegador
+        </label>
+      )}
+
+      {saveError && <p className="upload-error" role="alert">{saveError}</p>}
+
+      {!isLoading && savedChats.length > 0 && (
+        <section className="upload-saved" aria-label="Conversas salvas">
+          <div className="upload-saved-header">
+            <h2>Conversas salvas neste navegador</h2>
+            <button
+              type="button"
+              className="upload-saved-clear"
+              onClick={() => {
+                if (confirm('Apagar todas as conversas salvas neste navegador?')) onClearSaved();
+              }}
+            >
+              Apagar tudo
+            </button>
+          </div>
+          <ul>
+            {savedChats.map(chat => (
+              <li key={chat.id} className="upload-saved-item">
+                <button type="button" className="upload-saved-open" onClick={() => onOpenSaved(chat)}>
+                  <strong>{chat.title}</strong>
+                  <span>
+                    {chat.totalMessages.toLocaleString('pt-BR')} mensagens · {chat.dateStart} → {chat.dateEnd} · {formatSize(chat.totalBytes)}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="upload-saved-delete"
+                  aria-label={`Excluir conversa salva ${chat.title}`}
+                  title="Excluir"
+                  onClick={() => {
+                    if (confirm(`Excluir "${chat.title}" deste navegador?`)) onDeleteSaved(chat.id);
+                  }}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {!isLoading && progress.phase === 'done' && progress.message && (

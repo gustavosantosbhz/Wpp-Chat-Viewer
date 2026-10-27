@@ -10,13 +10,20 @@ Visualize, pesquise e exporte suas conversas do WhatsApp direto no navegador. Tu
 - Exportações Android e iOS, datas `DD/MM` e `MM/DD`, horários em 24h e AM/PM
 - Visual de celular que continua fluido com dezenas de milhares de mensagens (lista virtualizada e parsing em Web Worker)
 - Formatação do WhatsApp (`*negrito*`, `_itálico_`, `~tachado~`, `` `código` ``), links, imagens, vídeos, áudios e arquivos
-- Busca com destaque, filtros por remetente, período e tipo de conteúdo, e estatísticas da conversa
-- Exportação em PDF e Markdown (respeita os filtros ativos)
+- Busca que ignora acentos e maiúsculas, com destaque; filtros por remetente, período, dia da semana, horário e tipo de conteúdo
+- Estatísticas com gráficos (por horário, dia da semana e mês) e palavras mais usadas — cada barra, participante, mês e palavra é um filtro clicável
+- Exportação em PDF (texto selecionável via impressão, ou imagem), Markdown, HTML, JSON e CSV (respeita os filtros ativos)
+- Opção de lembrar conversas neste navegador (IndexedDB) e reabri-las depois
+- PWA instalável que funciona offline após a primeira visita
 - Temas escuro e claro
 
 ## Como exportar uma conversa no WhatsApp
 
 Abra a conversa → ⋮ / nome do contato → **Exportar conversa** → escolha *Sem mídia* (`.txt`) ou *Incluir mídia* (`.zip`).
+
+## Privacidade
+
+Os arquivos nunca saem do navegador. "Lembrar esta conversa" vem desligado; quando ativado, os arquivos originais ficam no IndexedDB do navegador e podem ser excluídos a qualquer momento na tela inicial. Células do CSV que começam com `=`, `+`, `-` ou `@` recebem um apóstrofo na frente para que planilhas não as executem como fórmula (o JSON mantém o texto original).
 
 ## Desenvolvimento
 
@@ -35,7 +42,7 @@ O deploy no GitHub Pages é feito por `.github/workflows/deploy.yml` a cada push
 
 ## Stack
 
-React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · Vitest
+React 19 · TypeScript · Vite · Tailwind CSS 4 · react-window · JSZip · jsPDF + html2canvas · vite-plugin-pwa · Vitest
 
 ## Licença
 

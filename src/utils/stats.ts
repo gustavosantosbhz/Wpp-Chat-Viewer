@@ -9,22 +9,32 @@ const URL_REGEX = /https?:\/\/\S+/g;
 const WORD_REGEX = /[\p{L}][\p{L}\p{N}']*/gu;
 
 function countTopWords(messages: ParsedMessage[]) {
-  const counts = new Map<string, number>();
+  // Agrupa variantes sem acento ("reunião"/"reuniao") e exibe a mais frequente
+  const groups = new Map<string, { total: number; variants: Map<string, number> }>();
 
   for (const msg of messages) {
     // Marcadores de mídia do WhatsApp não são conversa: só conta a legenda
     const text = getMediaCaption(msg.text);
 
     for (const raw of text.replace(URL_REGEX, ' ').toLowerCase().match(WORD_REGEX) ?? []) {
-      if (raw.length < MIN_WORD_LENGTH || STOP_WORDS.has(foldText(raw))) continue;
-      counts.set(raw, (counts.get(raw) ?? 0) + 1);
+      if (raw.length < MIN_WORD_LENGTH) continue;
+      const key = foldText(raw);
+      if (STOP_WORDS.has(key)) continue;
+
+      const group = groups.get(key) ?? { total: 0, variants: new Map() };
+      group.total++;
+      group.variants.set(raw, (group.variants.get(raw) ?? 0) + 1);
+      groups.set(key, group);
     }
   }
 
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, TOP_WORDS_LIMIT)
-    .map(([word, count]) => ({ word, count }));
+  return [...groups.values()]
+    .map(({ total, variants }) => ({
+      word: [...variants.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0],
+      count: total,
+    }))
+    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
+    .slice(0, TOP_WORDS_LIMIT);
 }
 
 export function calculateStats(messages: ParsedMessage[]): StatsData {

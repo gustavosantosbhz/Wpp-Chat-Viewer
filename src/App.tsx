@@ -8,6 +8,7 @@ import { ExportMenu, type ExportFormat } from './components/UI/ExportMenu';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 import { monthRange } from './utils/stats';
 import { useChat } from './hooks/useChat';
+import { useSavedChats } from './hooks/useSavedChats';
 import { useTheme } from './hooks/useTheme';
 import { useSearch } from './hooks/useSearch';
 import type { PdfExportProgress } from './utils/pdfExport';
@@ -21,6 +22,7 @@ import {
 function App() {
   const { chatData, isLoading, progress, processFiles, resetChat } = useChat();
   const { theme, toggleTheme } = useTheme();
+  const library = useSavedChats();
   const [selectedSender, setSelectedSender] = useState<string>('');
 
   const {
@@ -112,6 +114,11 @@ function App() {
     }
   };
 
+  const handleFilesSelected = async (files: File[]) => {
+    const loaded = await processFiles(files);
+    if (loaded && library.remember) await library.save(files, loaded);
+  };
+
   const handleReset = () => {
     setSelectedSender('');
     resetChat();
@@ -122,7 +129,14 @@ function App() {
     return (
       <div className={`app ${theme}`}>
         <DropZone
-          onFilesSelected={files => void processFiles(files)}
+          onFilesSelected={files => void handleFilesSelected(files)}
+          savedChats={library.savedChats}
+          remember={library.remember}
+          saveError={library.error}
+          onRememberChange={library.setRemember}
+          onOpenSaved={saved => void processFiles(saved.files)}
+          onDeleteSaved={id => void library.remove(id)}
+          onClearSaved={() => void library.clearAll()}
           isLoading={isLoading}
           progress={progress}
         />

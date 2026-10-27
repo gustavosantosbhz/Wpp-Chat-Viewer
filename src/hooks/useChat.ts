@@ -11,7 +11,7 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<ParserProgress>(EMPTY_PROGRESS);
 
-  const processFiles = useCallback(async (files: File[]) => {
+  const processFiles = useCallback(async (files: File[]): Promise<ChatData | null> => {
     setIsLoading(true);
     setProgress({ phase: 'reading', current: 0, total: files.length, message: 'Lendo arquivos...' });
 
@@ -58,7 +58,7 @@ export function useChat() {
 
       if (textContents.length === 0) {
         setProgress({ phase: 'done', current: 0, total: 0, message: 'Nenhum arquivo .txt encontrado.' });
-        return;
+        return null;
       }
 
       setProgress({
@@ -92,7 +92,7 @@ export function useChat() {
       );
       const nonSystem = allMessages.filter(m => !m.isSystemMessage);
 
-      setChatData({
+      const loaded: ChatData = {
         messages: allMessages,
         participants,
         dateStart: nonSystem[0]?.date ?? '',
@@ -100,7 +100,8 @@ export function useChat() {
         totalMessages: nonSystem.length,
         mediaFiles,
         firstSender: nonSystem[0]?.sender ?? '',
-      });
+      };
+      setChatData(loaded);
 
       setProgress({
         phase: 'done',
@@ -108,6 +109,7 @@ export function useChat() {
         total: allMessages.length,
         message: `${allMessages.length.toLocaleString('pt-BR')} mensagens carregadas!`,
       });
+      return loaded;
     } catch (error) {
       console.error('Erro ao processar arquivos:', error);
       setProgress({
@@ -116,6 +118,7 @@ export function useChat() {
         total: 0,
         message: `Erro ao processar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
