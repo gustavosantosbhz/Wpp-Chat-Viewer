@@ -4,21 +4,25 @@ import { ChatView } from './components/Chat/ChatView';
 import { StatsPanel } from './components/Stats/StatsPanel';
 import { Filters } from './components/Search/Filters';
 import { PdfProgressModal } from './components/UI/PdfProgressModal';
+import { ExportMenu, type ExportFormat } from './components/UI/ExportMenu';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
+import { monthRange } from './utils/stats';
 import { useChat } from './hooks/useChat';
+import { useSavedChats } from './hooks/useSavedChats';
 import { useTheme } from './hooks/useTheme';
 import { useSearch } from './hooks/useSearch';
-import { downloadMarkdown } from './utils/mdExport';
-import { exportToPdf, type PdfExportProgress } from './utils/pdfExport';
+import type { PdfExportProgress } from './utils/pdfExport';
+import type { ChatData } from './types';
 import {
   RefreshCw, Search, ChevronUp, ChevronDown, X,
-  FileDown, FileText, Moon, Sun,
+  Moon, Sun,
   ArrowLeft, Video, Phone, MoreVertical,
 } from 'lucide-react';
 
 function App() {
   const { chatData, isLoading, progress, processFiles, resetChat } = useChat();
   const { theme, toggleTheme } = useTheme();
+  const library = useSavedChats();
   const [selectedSender, setSelectedSender] = useState<string>('');
 
   const {
@@ -30,6 +34,8 @@ function App() {
     setSenders,
     setDateRange,
     setContentTypes,
+    setHours,
+    setWeekdays,
     clearFilters,
     goToNextResult,
     goToPrevResult,
@@ -46,28 +52,59 @@ function App() {
 
   // Determina se há filtros ativos
   const hasActiveFilters =
-    filters.senders.length > 0 || filters.dateStart || filters.dateEnd || filters.contentTypes.length > 0 || filters.searchTerm;
+    filters.senders.length > 0 || filters.dateStart || filters.dateEnd || filters.contentTypes.length > 0 ||
+    filters.hours.length > 0 || filters.weekdays.length > 0 || filters.searchTerm;
 
   // Mensagens para exportação: filtradas se filtro ativo, todas se não
   const exportMessages = hasActiveFilters ? filteredMessages : chatData?.messages || [];
 
-  const handleExportPdf = async () => {
-    if (!chatData) return;
+  const handleExportPdf = async (data: ChatData) => {
     setIsPdfExporting(true);
     try {
-      const exportData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.length };
-      await exportToPdf(exportData, progress => {
+      // jsPDF e html2canvas só são baixados quando o usuário exporta
+      const { exportToPdf } = await import('./utils/pdfExport');
+      await exportToPdf(data, progress => {
         setPdfProgress(progress);
       });
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      alert('Não foi possível gerar o PDF. Tente exportar um período menor.');
     } finally {
       setIsPdfExporting(false);
     }
   };
 
-  const handleExportMarkdown = () => {
+  const handleExport = async (format: ExportFormat) => {
     if (!chatData) return;
-    const exportData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.length };
-    downloadMarkdown(exportData);
+    const data: ChatData = { ...chatData, messages: exportMessages, totalMessages: exportMessages.filter(m => !m.isSystemMessage).length };
+
+    if (format === 'pdf-image') return handleExportPdf(data);
+
+    // Cada formato é carregado só quando usado
+    if (format === 'markdown') {
+      (await import('./utils/mdExport')).downloadMarkdown(data);
+      return;
+    }
+    const exporters = await import('./utils/exporters');
+    if (format === 'pdf-text') exporters.printChat(data);
+    else if (format === 'html') exporters.downloadHtml(data);
+    else if (format === 'json') exporters.downloadJson(data);
+    else exporters.downloadCsv(data);
+  };
+
+  const toggleItem = <T,>(list: T[], value: T) =>
+    list.includes(value) ? list.filter(item => item !== value) : [...list, value];
+
+  // Clicar no mês de novo limpa o período
+  const handleSelectMonth = (month: string) => {
+    const [start, end] = monthRange(month);
+    if (filters.dateStart === start && filters.dateEnd === end) setDateRange('', '');
+    else setDateRange(start, end);
+  };
+
+  const handleSearchWord = (word: string) => {
+    setIsSearchOpen(true);
+    setSearchTerm(word);
   };
 
   const handleToggleSearch = () => {
@@ -75,6 +112,11 @@ function App() {
     if (isSearchOpen) {
       setSearchTerm('');
     }
+  };
+
+  const handleFilesSelected = async (files: File[]) => {
+    const loaded = await processFiles(files);
+    if (loaded && library.remember) await library.save(files, loaded);
   };
 
   const handleReset = () => {
@@ -87,7 +129,14 @@ function App() {
     return (
       <div className={`app ${theme}`}>
         <DropZone
-          onFilesSelected={processFiles}
+          onFilesSelected={files => void handleFilesSelected(files)}
+          savedChats={library.savedChats}
+          remember={library.remember}
+          saveError={library.error}
+          onRememberChange={library.setRemember}
+          onOpenSaved={saved => void processFiles(saved.files)}
+          onDeleteSaved={id => void library.remove(id)}
+          onClearSaved={() => void library.clearAll()}
           isLoading={isLoading}
           progress={progress}
         />
@@ -140,16 +189,9 @@ function App() {
 
 
           <span className="viewer-actions-sep" />
-          <button className="viewer-action-btn" onClick={handleExportPdf} disabled={isPdfExporting} title="Exportar PDF">
-            <FileDown size={16} />
-            PDF
-          </button>
-          <button className="viewer-action-btn" onClick={handleExportMarkdown} title="Exportar Markdown">
-            <FileText size={16} />
-            Markdown
-          </button>
+          <ExportMenu disabled={isPdfExporting} onExport={format => void handleExport(format)} />
           <span className="viewer-actions-sep" />
-          <button className="viewer-action-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}>
+          <button className="viewer-action-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'} aria-label={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
@@ -164,6 +206,7 @@ function App() {
                 value={filters.searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Pesquisar na conversa..."
+                aria-label="Pesquisar na conversa"
                 className="viewer-search-input"
                 autoFocus
               />
@@ -176,13 +219,13 @@ function App() {
               )}
             </div>
             <div className="viewer-search-nav">
-              <button className="viewer-search-nav-btn" onClick={goToPrevResult} disabled={searchResults.length === 0}>
+              <button className="viewer-search-nav-btn" onClick={goToPrevResult} disabled={searchResults.length === 0} aria-label="Resultado anterior">
                 <ChevronUp size={18} />
               </button>
-              <button className="viewer-search-nav-btn" onClick={goToNextResult} disabled={searchResults.length === 0}>
+              <button className="viewer-search-nav-btn" onClick={goToNextResult} disabled={searchResults.length === 0} aria-label="Próximo resultado">
                 <ChevronDown size={18} />
               </button>
-              <button className="viewer-search-nav-btn" onClick={handleToggleSearch}>
+              <button className="viewer-search-nav-btn" onClick={handleToggleSearch} aria-label="Fechar busca">
                 <X size={18} />
               </button>
             </div>
@@ -203,6 +246,10 @@ function App() {
             onSendersChange={setSenders}
             onDateRangeChange={setDateRange}
             onContentTypesChange={setContentTypes}
+            weekdays={filters.weekdays}
+            hours={filters.hours}
+            onWeekdaysChange={setWeekdays}
+            onHoursChange={setHours}
             onClear={clearFilters}
           />
 
@@ -212,7 +259,7 @@ function App() {
             <div className="phone-screen">
               {/* Header WhatsApp simples (dentro do phone) */}
               <div className="phone-wpp-header">
-                <button className="phone-wpp-header-back">
+                <button className="phone-wpp-header-back" aria-label="Voltar">
                   <ArrowLeft size={20} />
                 </button>
                 <div className="phone-wpp-avatar">
@@ -252,7 +299,7 @@ function App() {
             <div className="phone-bottom-bar">
               <div className="phone-bottom-bar-input">
                 <span className="phone-bottom-emoji">😊</span>
-                <span className="phone-bottom-text">Message</span>
+                <span className="phone-bottom-text">Mensagem</span>
               </div>
               <div className="phone-bottom-actions">
                 <span className="phone-bottom-icon">📎</span>
@@ -263,7 +310,15 @@ function App() {
           </div>
 
           {/* ===== ESTATÍSTICAS à direita do phone ===== */}
-          <StatsPanel messages={chatData.messages} />
+          <StatsPanel
+            messages={chatData.messages}
+            filters={filters}
+            onToggleSender={name => setSenders(toggleItem(filters.senders, name))}
+            onToggleHour={hour => setHours(toggleItem(filters.hours, hour))}
+            onToggleWeekday={day => setWeekdays(toggleItem(filters.weekdays, day))}
+            onSelectMonth={handleSelectMonth}
+            onSearchWord={handleSearchWord}
+          />
         </div>
       </div>
 

@@ -1,6 +1,9 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { ChatData } from '../types';
+import { exportBaseName } from './download';
+import { getMediaCaption } from './parser';
+import { getSenderColorMap, SENDER_COLORS } from './senderColors';
 
 export interface PdfExportProgress {
   currentPage: number;
@@ -12,8 +15,8 @@ export async function exportToPdf(
   onProgress?: (progress: PdfExportProgress) => void
 ): Promise<void> {
   const { participants, dateStart, dateEnd, messages } = chatData;
-  const names = participants.join('_').replace(/\s+/g, '');
-  const filename = `conversa_${names}_${dateStart.replace(/\//g, '-')}-${dateEnd.replace(/\//g, '-')}.pdf`;
+  const filename = `${exportBaseName(chatData)}_${dateStart.replace(/\//g, '-')}-${dateEnd.replace(/\//g, '-')}.pdf`;
+  const senderColors = getSenderColorMap(participants);
 
   // Cria container temporário para renderizar as mensagens
   const container = document.createElement('div');
@@ -31,9 +34,8 @@ export async function exportToPdf(
   `;
   document.body.appendChild(container);
 
-  const nonSystemMessages = messages.filter(m => !m.isSystemMessage);
   const CHUNK_SIZE = 50;
-  const totalChunks = Math.ceil(nonSystemMessages.length / CHUNK_SIZE);
+  const totalChunks = Math.ceil(messages.length / CHUNK_SIZE);
 
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -55,8 +57,8 @@ export async function exportToPdf(
     }
 
     const start = chunk * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, nonSystemMessages.length);
-    const chunkMessages = nonSystemMessages.slice(start, end);
+    const end = Math.min(start + CHUNK_SIZE, messages.length);
+    const chunkMessages = messages.slice(start, end);
 
     // Renderiza chunk de mensagens
     container.innerHTML = '';
@@ -68,8 +70,21 @@ export async function exportToPdf(
         currentDate = msg.date;
         const dateSep = document.createElement('div');
         dateSep.style.cssText = 'text-align:center; margin:12px 0; color:#8696a0; font-size:12px;';
-        dateSep.innerHTML = `<span style="background:#1d2a31; padding:4px 12px; border-radius:8px;">${msg.date}</span>`;
+        const dateLabel = document.createElement('span');
+        dateLabel.style.cssText = 'background:#1d2a31; padding:4px 12px; border-radius:8px;';
+        dateLabel.textContent = msg.date;
+        dateSep.appendChild(dateLabel);
         container.appendChild(dateSep);
+      }
+
+      // Mensagem do sistema (entrada/saída de membros, criptografia, etc.)
+      if (msg.isSystemMessage) {
+        const systemEl = document.createElement('div');
+        systemEl.style.cssText =
+          'text-align:center; margin:6px auto; max-width:80%; color:#8696a0; font-size:11px;';
+        systemEl.textContent = msg.text;
+        container.appendChild(systemEl);
+        continue;
       }
 
       // Bolha de mensagem
@@ -89,13 +104,15 @@ export async function exportToPdf(
       `;
 
       const senderEl = document.createElement('div');
-      senderEl.style.cssText = 'font-size:11px; font-weight:600; margin-bottom:2px; color:#00a884;';
+      senderEl.style.cssText = `font-size:11px; font-weight:600; margin-bottom:2px; color:${senderColors.get(msg.sender) ?? SENDER_COLORS[0]};`;
       senderEl.textContent = msg.sender;
       bubble.appendChild(senderEl);
 
       const textEl = document.createElement('div');
       textEl.style.cssText = 'color:#e9edef; word-wrap:break-word;';
-      textEl.textContent = msg.mediaFilename ? `📎 ${msg.mediaFilename}` : msg.text;
+      const caption = msg.mediaFilename ? getMediaCaption(msg.text) : msg.text;
+      textEl.style.whiteSpace = 'pre-wrap';
+      textEl.textContent = msg.mediaFilename ? `📎 ${msg.mediaFilename}${caption ? `\n${caption}` : ''}` : caption;
       bubble.appendChild(textEl);
 
       const timeEl = document.createElement('div');
@@ -107,7 +124,7 @@ export async function exportToPdf(
     }
 
     // Aguardar renderização
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => requestAnimationFrame(() => r(null)));
 
     try {
       const canvas = await html2canvas(container, {

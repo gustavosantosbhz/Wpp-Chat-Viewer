@@ -4,12 +4,19 @@ type Theme = 'dark' | 'light';
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('wpp-viewer-theme');
-    return (saved as Theme) || 'dark';
+    try {
+      return localStorage.getItem('wpp-viewer-theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark'; // armazenamento indisponível (modo privado, etc.)
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem('wpp-viewer-theme', theme);
+    try {
+      localStorage.setItem('wpp-viewer-theme', theme);
+    } catch {
+      // ignora: o tema só não será lembrado
+    }
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
